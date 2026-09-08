@@ -1,0 +1,21 @@
+#!/bin/sh
+
+TARGET="$1"
+
+if [ -z "$TARGET" ]; then
+    echo "Usage: $0 <container>" >&2
+    exit 1
+fi
+
+# Must be a !statically linked! container
+DEBUG_IMAGE="${DEBUG_IMAGE:-docker.io/library/busybox:musl}"
+
+podman run -it --rm \
+    --pid=container:"$TARGET" \
+    --network=container:"$TARGET" \
+    "$DEBUG_IMAGE" sh -c '
+        SIDECAR_PID=$$
+        ln -sf /proc/$SIDECAR_PID/root/bin /proc/1/root/.debug_bins
+        chroot /proc/1/root /.debug_bins/busybox sh -c \
+            "export PATH=\$PATH:/.debug_bins; exec /.debug_bins/busybox sh"
+    '
